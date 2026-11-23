@@ -1,0 +1,25 @@
+{
+  "name": "Ma liste de courses",
+  "short_name": "Mes courses",
+  "description": "Une liste de courses personnelle, simple et utilisable hors connexion.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4faf7",
+  "theme_color": "#0b5c4b",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
