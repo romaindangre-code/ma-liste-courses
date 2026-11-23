@@ -9,6 +9,8 @@ const BACKUP_VERSION = 1;
 let products = loadProducts();
 let editingId = null;
 let toastTimer;
+let confirmationResolver = null;
+const frenchCollator = new Intl.Collator("fr", { sensitivity: "base", numeric: true });
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -16,7 +18,8 @@ const els = {
   courseGroups: $("courseGroups"), productGroups: $("productGroups"), emptyCourses: $("emptyCourses"),
   remainingCount: $("remainingCount"), purchasedCount: $("purchasedCount"), courseBadge: $("courseBadge"), catalogCount: $("catalogCount"),
   searchInput: $("searchInput"), dialog: $("productDialog"), form: $("productForm"), dialogTitle: $("dialogTitle"),
-  name: $("productName"), rayon: $("productRayon"), formError: $("formError"), toast: $("toast")
+  name: $("productName"), rayon: $("productRayon"), formError: $("formError"), toast: $("toast"),
+  confirmDialog: $("confirmDialog"), confirmTitle: $("confirmTitle"), confirmMessage: $("confirmMessage"), confirmAction: $("confirmAction")
 };
 
 function loadProducts() {
@@ -33,6 +36,24 @@ function saveProducts(message) {
 function showToast(message) {
   clearTimeout(toastTimer); els.toast.textContent = message; els.toast.classList.add("show");
   toastTimer = setTimeout(() => els.toast.classList.remove("show"), 2100);
+}
+
+function requestConfirmation({ title, message, confirmLabel = "Confirmer", danger = false }) {
+  if (confirmationResolver) confirmationResolver(false);
+  els.confirmTitle.textContent = title;
+  els.confirmMessage.textContent = message;
+  els.confirmAction.textContent = confirmLabel;
+  els.confirmAction.classList.toggle("danger-button", danger);
+  els.confirmDialog.showModal();
+  return new Promise(resolve => { confirmationResolver = resolve; });
+}
+
+function finishConfirmation(confirmed) {
+  if (!confirmationResolver) return;
+  const resolve = confirmationResolver;
+  confirmationResolver = null;
+  els.confirmDialog.close();
+  resolve(confirmed);
 }
 
 function backupFileName() {
@@ -83,7 +104,7 @@ async function restoreBackup(file) {
     if (file.size > 1024 * 1024) throw new Error("size");
     const restoredProducts = validatedBackup(JSON.parse(await file.text()));
     const message = `Restaurer ${restoredProducts.length} produit${restoredProducts.length > 1 ? "s" : ""} ? Les données actuelles seront remplacées.`;
-    if (!confirm(message)) return;
+    if (!await requestConfirmation({ title: "Restaurer la sauvegarde ?", message, confirmLabel: "Restaurer", danger: true })) return;
     products = restoredProducts;
     els.searchInput.value = "";
     saveProducts("Données restaurées");
@@ -102,7 +123,7 @@ function icon(name) {
   return `<svg aria-hidden="true" viewBox="0 0 24 24">${paths[name]}</svg>`;
 }
 function grouped(list) {
-  return RAYONS.map(rayon => [rayon, list.filter(p => p.rayon === rayon)]).filter(([, items]) => items.length);
+  return RAYONS.map(rayon => [rayon, list.filter(p => p.rayon === rayon).sort((a, b) => frenchCollator.compare(a.name, b.name))]).filter(([, items]) => items.length);
 }
 function courseRow(p) {
   return `<div class="item-row ${p.purchased ? "purchased" : ""}">
@@ -150,11 +171,22 @@ els.productsTab.addEventListener("click", () => switchView("products"));
 $("openProducts").addEventListener("click", () => switchView("products"));
 $("addProduct").addEventListener("click", () => openDialog());
 $("closeDialog").addEventListener("click", closeDialog); $("cancelDialog").addEventListener("click", closeDialog);
+$("cancelConfirm").addEventListener("click", () => finishConfirmation(false));
+els.confirmAction.addEventListener("click", () => finishConfirmation(true));
+els.confirmDialog.addEventListener("cancel", event => { event.preventDefault(); finishConfirmation(false); });
 els.searchInput.addEventListener("input", render);
-$("resetList").addEventListener("click", () => {
+$("clearPurchased").addEventListener("click", async () => {
+  const purchased = products.filter(p => p.selected && p.purchased);
+  if (!purchased.length) { showToast("Aucun produit acheté à retirer"); return; }
+  const message = `${purchased.length} produit${purchased.length > 1 ? "s achetés seront retirés" : " acheté sera retiré"}. Les produits encore à trouver resteront dans la liste.`;
+  if (!await requestConfirmation({ title: "Retirer les produits achetés ?", message, confirmLabel: "Retirer" })) return;
+  purchased.forEach(p => { p.selected = false; p.purchased = false; });
+  saveProducts("Produits achetés retirés");
+});
+$("resetList").addEventListener("click", async () => {
   const hasItems = products.some(p => p.selected || p.purchased);
   if (!hasItems) { showToast("La liste est déjà vide"); return; }
-  if (!confirm("Retirer tous les produits de la liste de courses ? Le catalogue sera conservé.")) return;
+  if (!await requestConfirmation({ title: "Tout réinitialiser ?", message: "Tous les produits seront retirés de la liste de courses, y compris ceux qui ne sont pas cochés. Le catalogue sera conservé.", confirmLabel: "Tout réinitialiser", danger: true })) return;
   products.forEach(p => { p.selected = false; p.purchased = false; });
   saveProducts("Liste réinitialisée");
 });
@@ -206,11 +238,11 @@ document.addEventListener("change", (event) => {
   if (input.dataset.action === "selected" && !input.checked) product.purchased = false;
   saveProducts(input.dataset.action === "selected" ? "Liste mise à jour" : null);
 });
-document.addEventListener("click", (event) => {
+document.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-action]"); if (!button) return;
   const product = products.find(p => p.id === button.dataset.id); if (!product) return;
   if (button.dataset.action === "edit") openDialog(product);
-  if (button.dataset.action === "delete" && confirm(`Supprimer définitivement « ${product.name} » du catalogue ?`)) {
+  if (button.dataset.action === "delete" && await requestConfirmation({ title: "Supprimer ce produit ?", message: `« ${product.name} » sera supprimé définitivement du catalogue.`, confirmLabel: "Supprimer", danger: true })) {
     products = products.filter(p => p.id !== product.id); saveProducts("Produit supprimé");
   }
 });
