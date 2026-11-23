@@ -179,14 +179,14 @@ $("clearPurchased").addEventListener("click", async () => {
   const purchased = products.filter(p => p.selected && p.purchased);
   if (!purchased.length) { showToast("Aucun produit acheté à retirer"); return; }
   const message = `${purchased.length} produit${purchased.length > 1 ? "s achetés seront retirés" : " acheté sera retiré"}. Les produits encore à trouver resteront dans la liste.`;
-  if (!await requestConfirmation({ title: "Retirer les produits achetés ?", message, confirmLabel: "Retirer" })) return;
+  if (!await requestConfirmation({ title: "Actualiser la liste ?", message, confirmLabel: "Actualiser" })) return;
   purchased.forEach(p => { p.selected = false; p.purchased = false; });
-  saveProducts("Produits achetés retirés");
+  saveProducts("Liste actualisée");
 });
 $("resetList").addEventListener("click", async () => {
   const hasItems = products.some(p => p.selected || p.purchased);
   if (!hasItems) { showToast("La liste est déjà vide"); return; }
-  if (!await requestConfirmation({ title: "Tout réinitialiser ?", message: "Tous les produits seront retirés de la liste de courses, y compris ceux qui ne sont pas cochés. Le catalogue sera conservé.", confirmLabel: "Tout réinitialiser", danger: true })) return;
+  if (!await requestConfirmation({ title: "Réinitialiser la liste ?", message: "Tous les produits seront retirés de la liste de courses, y compris ceux qui ne sont pas cochés. Le catalogue sera conservé.", confirmLabel: "Réinitialiser", danger: true })) return;
   products.forEach(p => { p.selected = false; p.purchased = false; });
   saveProducts("Liste réinitialisée");
 });

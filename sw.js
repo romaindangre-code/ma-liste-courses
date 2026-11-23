@@ -1,9 +1,9 @@
-const CACHE_NAME = "ma-liste-courses-v3";
+const CACHE_NAME = "ma-liste-courses-v4";
 const APP_FILES = [
   "./",
   "./index.html",
-  "./styles.css?v=3",
-  "./app.js?v=3",
+  "./styles.css?v=4",
+  "./app.js?v=4",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
